@@ -24,8 +24,8 @@ export default function RegisterPage() {
             const data = await res.json()
 
             if (res.ok) {
-                // Redirect to dashboard on successful registration
-                router.push('/dashboard')
+                // Redirect to user dashboard with user ID
+                router.push(`/dashboard/user?user=${data.user.id}`)
             } else {
                 if (data.code === 'EMAIL_EXISTS') {
                     // Show login link for existing email

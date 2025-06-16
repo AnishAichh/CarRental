@@ -48,8 +48,9 @@ export async function POST(request: NextRequest) {
         const token = await generateToken({
             id: user.id,
             email: user.email,
-            role: user.role,
-            isAdmin: user.is_admin
+            role: user.is_admin ? 'admin' : user.role,
+            isAdmin: !!user.is_admin,
+            kycVerified: !!user.is_kyc_verified
         })
 
         // Set HTTP-only cookie
@@ -59,8 +60,9 @@ export async function POST(request: NextRequest) {
                 id: user.id,
                 email: user.email,
                 name: user.name,
-                role: user.role,
-                isAdmin: user.is_admin
+                role: user.is_admin ? 'admin' : user.role,
+                isAdmin: !!user.is_admin,
+                kycVerified: !!user.is_kyc_verified
             }
         })
 

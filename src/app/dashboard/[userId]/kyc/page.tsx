@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function KYCPage() {
     const [form, setForm] = useState({
@@ -13,6 +13,8 @@ export default function KYCPage() {
     })
 
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirect = searchParams.get('redirect')
 
     const handleChange = (e: any) => {
         setForm({ ...form, [e.target.name]: e.target.value })
@@ -27,7 +29,7 @@ export default function KYCPage() {
         })
         if (res.ok) {
             alert('KYC submitted for review')
-            router.push('/')
+            router.push(redirect || '/dashboard')
         } else {
             alert('Submission failed')
         }
@@ -49,4 +51,4 @@ export default function KYCPage() {
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Submit for Review</button>
         </form>
     )
-}
+} 

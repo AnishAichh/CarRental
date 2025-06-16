@@ -5,7 +5,9 @@ export interface User {
     role: 'user' | 'owner' | 'admin'
     avatar?: string
     kycVerified: boolean
+    kyc_status?: 'pending' | 'approved' | 'rejected'
     isAdmin: boolean
+    is_admin?: boolean
 }
 
 export interface Vehicle {

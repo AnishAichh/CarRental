@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { User } from '@/lib/types'
 
 export default function Home() {
   const router = useRouter()
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [userRole, setUserRole] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -15,15 +16,36 @@ export default function Home() {
         const response = await fetch('/api/user/me')
         if (response.ok) {
           const data = await response.json()
-          setIsLoggedIn(true)
-          setUserRole(data.role)
+          setUser(data.user)
         }
       } catch (error) {
         console.error('Error checking auth:', error)
+        setUser(null)
+      } finally {
+        setLoading(false)
       }
     }
     checkAuth()
   }, [])
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error('Logout failed')
+      }
+
+      setUser(null)
+      router.push('/')
+      router.refresh()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white text-gray-800 flex flex-col">
@@ -31,22 +53,17 @@ export default function Home() {
       <header className="w-full px-8 py-4 shadow-md bg-white sticky top-0 z-10 flex justify-between items-center">
         <Link href="/" className="text-2xl font-bold text-primary">DriveX</Link>
         <nav className="space-x-4">
-          <Link href="/vehicles" className="hover:text-primary">Browse</Link>
-          {isLoggedIn ? (
+          <Link href="/browse-vehicles" className="hover:text-primary">Browse</Link>
+          {!loading && user ? (
             <>
-              {userRole === 'owner' && (
+              {user.role === 'owner' && (
                 <Link href="/dashboard/owner" className="hover:text-primary">Dashboard</Link>
               )}
-              {userRole === 'admin' && (
-                <Link href="/admin" className="hover:text-primary">Admin</Link>
+              {user.role === 'admin' && (
+                <Link href="/dashboard/admin" className="hover:text-primary">Admin</Link>
               )}
               <button
-                onClick={async () => {
-                  await fetch('/api/auth/logout', { method: 'POST' })
-                  setIsLoggedIn(false)
-                  setUserRole(null)
-                  router.push('/')
-                }}
+                onClick={handleLogout}
                 className="hover:text-primary"
               >
                 Logout
@@ -68,26 +85,65 @@ export default function Home() {
           Rent or list your own car or bike for self-drive across India. KYC secured, admin verified, decentralized bookings.
         </p>
         <div className="flex gap-4">
-          <Link
-            href="/vehicles"
-            className="bg-primary text-black px-6 py-3 rounded-md hover:bg-primary-dark transition-colors"
-          >
-            Browse Vehicles
-          </Link>
-          {isLoggedIn && userRole === 'owner' ? (
-            <Link
-              href="/dashboard/owner/vehicles/add"
-              className="bg-gray-800 text-black px-6 py-3 rounded-md hover:bg-gray-900 transition-colors"
-            >
-              List Your Vehicle
-            </Link>
+          {!loading && user ? (
+            <>
+              <Link
+                href="/browse-vehicles"
+                className="bg-primary text-black px-6 py-3 rounded-md hover:bg-primary-dark transition-colors"
+              >
+                Browse Vehicles
+              </Link>
+              {user.role === 'owner' ? (
+                <Link
+                  href="/dashboard/owner/vehicles/add"
+                  className="bg-gray-800 text-white px-6 py-3 rounded-md hover:bg-gray-900 transition-colors"
+                >
+                  List Your Vehicle
+                </Link>
+              ) : user.role === 'user' && user.kycVerified ? (
+                <Link
+                  href="/dashboard/become-owner"
+                  className="flex flex-col items-center justify-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.75 19.5L8.25 12l7.5-7.5"
+                    />
+                  </svg>
+                </Link>
+              ) : (
+                <Link
+                  href="/profile?kyc_required=true"
+                  className="bg-gray-800 text-white px-6 py-3 rounded-md hover:bg-gray-900 transition-colors"
+                >
+                  Complete KYC
+                </Link>
+              )}
+            </>
           ) : (
-            <Link
-              href="/register?role=owner"
-              className="bg-gray-800 text-white px-6 py-3 rounded-md hover:bg-gray-900 transition-colors"
-            >
-              Become an Owner
-            </Link>
+            <>
+              <Link
+                href="/login"
+                className="bg-primary text-black px-6 py-3 rounded-md hover:bg-primary-dark transition-colors"
+              >
+                Get Started
+              </Link>
+              <Link
+                href="/register"
+                className="bg-gray-800 text-white px-6 py-3 rounded-md hover:bg-gray-900 transition-colors"
+              >
+                Register Now
+              </Link>
+            </>
           )}
         </div>
       </section>

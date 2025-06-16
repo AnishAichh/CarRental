@@ -16,12 +16,46 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json()
-        const { fullName, drivingLicenseUrl, addressProofUrl, ownershipDeclaration } = body
+        // Destructure all required fields (excluding email, as it's from JWT)
+        const {
+            // Owner fields
+            full_name,
+            phone_number,
+            address,
+            government_id_type,
+            government_id_number,
+            id_image_url,
+            selfie_url,
+            // Vehicle fields
+            vehicle_type,
+            brand_model,
+            registration_number,
+            year_of_manufacture,
+            fuel_type,
+            transmission,
+            seating_capacity,
+            vehicle_photo_url,
+            insurance_document_url,
+            rc_document_url,
+            price_per_day,
+            available_from,
+            available_to
+        } = body
 
-        // Validate required fields
-        if (!fullName || !drivingLicenseUrl || !addressProofUrl || !ownershipDeclaration) {
+        // Validate required fields (excluding email)
+        const missingFields = []
+        for (const [key, value] of Object.entries({
+            full_name, phone_number, address, government_id_type, government_id_number, id_image_url, selfie_url,
+            vehicle_type, brand_model, registration_number, year_of_manufacture, fuel_type, transmission, seating_capacity,
+            vehicle_photo_url, insurance_document_url, rc_document_url, price_per_day, available_from
+        })) {
+            if (value === undefined || value === null || value === "") {
+                missingFields.push(key)
+            }
+        }
+        if (missingFields.length > 0) {
             return NextResponse.json(
-                { error: 'Missing required fields' },
+                { error: `Missing required fields: ${missingFields.join(", ")}` },
                 { status: 400 }
             )
         }
@@ -30,50 +64,49 @@ export async function POST(request: NextRequest) {
         try {
             await client.query('BEGIN')
 
-            // Check if user already has a pending request
+            // Check if user already has a pending or approved owner request
             const { rows: existingRequests } = await client.query(
-                `SELECT id FROM owner_requests 
-                WHERE user_id = $1 AND status = 'pending'`,
+                `SELECT id, status FROM owner_requests 
+                WHERE user_id = $1 AND status IN ('pending', 'approved')`,
                 [decoded.id]
             )
 
             if (existingRequests.length > 0) {
                 await client.query('ROLLBACK')
+                const status = existingRequests[0].status
                 return NextResponse.json(
-                    { error: 'You already have a pending owner request' },
+                    {
+                        error: status === 'pending'
+                            ? 'You already have a pending owner request'
+                            : 'You are already an approved owner'
+                    },
                     { status: 400 }
                 )
             }
 
-            // Check if user is already an owner
-            const { rows: userRows } = await client.query(
-                'SELECT role FROM users WHERE id = $1',
-                [decoded.id]
-            )
-
-            if (userRows[0].role === 'owner') {
-                await client.query('ROLLBACK')
-                return NextResponse.json(
-                    { error: 'You are already an owner' },
-                    { status: 400 }
-                )
-            }
-
-            // Create owner request
-            const { rows: request } = await client.query(
+            // Insert into owner_requests
+            const { rows: ownerRequestRows } = await client.query(
                 `INSERT INTO owner_requests (
-                    user_id, full_name, driving_license_url,
-                    address_proof_url, ownership_declaration
-                ) VALUES ($1, $2, $3, $4, $5)
-                RETURNING *`,
-                [decoded.id, fullName, drivingLicenseUrl, addressProofUrl, ownershipDeclaration]
+                    user_id, full_name, phone_number, email, address, government_id_type, government_id_number, id_image_url, selfie_url,
+                    vehicle_type, brand_model, registration_number, year_of_manufacture, fuel_type, transmission, seating_capacity,
+                    vehicle_photo_url, insurance_document_url, rc_document_url, price_per_day, available_from, available_to
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                    $10, $11, $12, $13, $14, $15, $16,
+                    $17, $18, $19, $20, $21, $22
+                ) RETURNING *`,
+                [
+                    decoded.id, full_name, phone_number, decoded.email, address, government_id_type, government_id_number, id_image_url, selfie_url,
+                    vehicle_type, brand_model, registration_number, year_of_manufacture, fuel_type, transmission, seating_capacity,
+                    vehicle_photo_url, insurance_document_url, rc_document_url, price_per_day, available_from, available_to
+                ]
             )
 
             await client.query('COMMIT')
 
             return NextResponse.json({
                 message: 'Owner request submitted successfully',
-                request: request[0]
+                request: ownerRequestRows[0]
             }, { status: 201 })
         } catch (error) {
             await client.query('ROLLBACK')

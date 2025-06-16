@@ -14,7 +14,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     const searchParams = useSearchParams()
-    const from = searchParams.get('from')
+    const from = searchParams?.get('from')
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -34,13 +34,13 @@ export default function LoginPage() {
                 throw new Error(data.message || 'Login failed')
             }
 
-            // Redirect based on user role
-            if (data.user.role === 'admin') {
+            // Redirect based on is_admin flag first, then role
+            if (data.user.isAdmin) {
                 router.push('/dashboard/admin')
             } else if (data.user.role === 'owner') {
-                router.push('/dashboard/owner')
+                router.push(`/dashboard/owner?user=${data.user.id}`)
             } else {
-                router.push('/dashboard/user')
+                router.push(`/dashboard/user?user=${data.user.id}`)
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed')
@@ -68,8 +68,8 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                    <Alert variant="error" title="Error">
-                        {error}
+                    <Alert variant="error" title="Error" message={error}>
+                        {/* {error} */}
                     </Alert>
                 )}
 
@@ -95,7 +95,7 @@ export default function LoginPage() {
                         <Button
                             type="submit"
                             className="w-full"
-                            loading={loading}
+                            isLoading={loading}
                         >
                             Sign in
                         </Button>

@@ -10,7 +10,7 @@ export async function GET() {
 
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const decoded = verifyJWT(token)
+    const decoded = await verifyJWT(token)
     if (typeof decoded !== 'object' || !('id' in decoded)) {
         return NextResponse.json({ error: 'Invalid token' }, { status: 403 })
     }
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const decoded = verifyJWT(token)
+    const decoded = await verifyJWT(token)
     if (typeof decoded !== 'object' || !('id' in decoded)) {
         return NextResponse.json({ error: 'Invalid token' }, { status: 403 })
     }

@@ -32,18 +32,19 @@ export async function POST(req: NextRequest) {
                 role,
                 is_kyc_verified
             ) VALUES ($1, $2, $3, 'user', false) 
-            RETURNING id, email, name, role, is_admin`,
+            RETURNING id, email, name, role, is_admin, is_kyc_verified`,
             [email, hash, name]
         )
 
         const user = result.rows[0]
 
         // Generate token and set cookie
-        const token = generateToken({
+        const token = await generateToken({
             id: user.id,
             email: user.email,
             role: user.role,
-            is_admin: user.is_admin
+            isAdmin: user.is_admin,
+            kycVerified: user.is_kyc_verified
         })
 
         const res = NextResponse.json({
@@ -56,9 +57,8 @@ export async function POST(req: NextRequest) {
             }
         })
 
-        res.cookies.set({
-            name: 'token',
-            value: token,
+        // Set the token cookie
+        res.cookies.set('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',

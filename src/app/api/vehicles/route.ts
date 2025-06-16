@@ -2,23 +2,63 @@ import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { verifyJWT } from '@/lib/auth'
 import { JwtPayload } from 'jsonwebtoken'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 export async function GET(request: NextRequest) {
     try {
+        const searchParams = request.nextUrl.searchParams
+        const location = searchParams.get('location')
+        const startDate = searchParams.get('startDate')
+        const endDate = searchParams.get('endDate')
+
+        console.log('Search params:', { location, startDate, endDate })
+
         const client = await pool.connect()
         try {
-            // Get all approved and available vehicles
-            const { rows: vehicles } = await client.query(
-                `SELECT 
+            let query = `
+                SELECT 
                     v.*,
                     u.name as owner_name,
                     u.email as owner_email
                 FROM vehicles v
                 JOIN users u ON v.owner_id = u.id
-                WHERE v.approved_by_admin = true 
+                WHERE v.approved_by_admin = true
                 AND v.availability = true
-                ORDER BY v.created_at DESC`
-            )
+            `
+            const queryParams: any[] = []
+            let paramCount = 1
+
+            if (location) {
+                query += ` AND LOWER(v.location) LIKE LOWER($${paramCount})`
+                queryParams.push(`%${location}%`)
+                paramCount++
+            }
+
+            if (startDate && endDate) {
+                query += `
+                    AND NOT EXISTS (
+                        SELECT 1 FROM bookings b
+                        WHERE b.vehicle_id = v.id
+                        AND b.status = 'confirmed'
+                        AND (
+                            (b.start_date <= $${paramCount}::date AND b.end_date >= $${paramCount}::date)
+                            OR (b.start_date <= $${paramCount + 1}::date AND b.end_date >= $${paramCount + 1}::date)
+                            OR (b.start_date >= $${paramCount}::date AND b.end_date <= $${paramCount + 1}::date)
+                        )
+                    )
+                `
+                queryParams.push(startDate, endDate)
+                paramCount += 2
+            }
+
+            query += ` ORDER BY v.created_at DESC`
+
+            console.log('Query:', query)
+            console.log('Params:', queryParams)
+
+            const { rows: vehicles } = await client.query(query, queryParams)
+            console.log('Found vehicles:', vehicles.length)
 
             return NextResponse.json({ vehicles })
         } catch (error) {
@@ -40,90 +80,175 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    console.log('=== VEHICLE SUBMISSION START ===');
     try {
-        const token = request.cookies.get('token')?.value
+        const token = request.cookies.get('token')?.value;
+        console.log('Token found:', !!token);
+
         if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            console.log('No token found');
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const decoded = await verifyJWT(token) as JwtPayload
+        const decoded = verifyJWT(token) as JwtPayload;
+        console.log('Decoded token:', decoded);
+
         if (!decoded || !decoded.id) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+            console.log('Invalid token');
+            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        const body = await request.json()
-        const {
-            name,
-            brand,
-            type,
-            price_per_day,
-            image_url
-        } = body
+        const body = await request.json();
+        console.log('Request body:', body);
 
-        // Validate required fields
-        if (!name || !brand || !type || !price_per_day) {
-            return NextResponse.json(
-                { error: 'Missing required fields' },
-                { status: 400 }
-            )
-        }
-
-        const client = await pool.connect()
+        const client = await pool.connect();
         try {
-            await client.query('BEGIN')
+            await client.query('BEGIN');
+            console.log('Transaction started');
 
-            // Check if user is KYC verified
-            const { rows: userRows } = await client.query(
-                `SELECT u.*, k.status as kyc_status 
-                FROM users u
-                LEFT JOIN kyc k ON u.id = k.user_id
-                WHERE u.id = $1
-                ORDER BY k.created_at DESC
+            // Fetch the latest owner request for the user (regardless of status)
+            const { rows: ownerRows } = await client.query(
+                `SELECT * FROM owner_requests 
+                WHERE user_id = $1
+                ORDER BY created_at DESC
                 LIMIT 1`,
                 [decoded.id]
-            )
+            );
+            console.log('Owner rows found (any status):', ownerRows);
 
-            if (userRows.length === 0) {
-                await client.query('ROLLBACK')
+            if (ownerRows.length === 0) {
+                await client.query('ROLLBACK');
+                console.log('User has no owner application submitted.');
                 return NextResponse.json(
-                    { error: 'User not found' },
-                    { status: 404 }
-                )
-            }
-
-            if (!userRows[0].kyc_status || userRows[0].kyc_status !== 'approved') {
-                await client.query('ROLLBACK')
-                return NextResponse.json(
-                    { error: 'KYC verification required to list vehicles' },
+                    { error: 'You must submit an owner application before listing a vehicle.' },
                     { status: 403 }
-                )
+                );
             }
 
-            // Insert vehicle
+            const ownerInfo = ownerRows[0];
+            console.log('Owner info for vehicle submission:', ownerInfo);
+
+            const formData = await request.formData();
+            console.log('Form data received');
+
+            const session = await getServerSession(authOptions);
+            if (!session?.user) {
+                console.log('No session found');
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+
+            console.log('Session user:', session.user);
+
+            // Insert vehicle with details from body, falling back to ownerInfo if needed
             const { rows: vehicle } = await client.query(
                 `INSERT INTO vehicles (
-                    name, brand, type, price_per_day, 
-                    image_url, owner_id, status, availability, approved
-                ) VALUES ($1, $2, $3, $4, $5, $6, 'pending_approval', false, false)
+                    owner_id,
+                    name,
+                    model,
+                    year,
+                    price_per_day,
+                    image_url,
+                    description,
+                    features,
+                    location,
+                    registration_number,
+                    insurance_details,
+                    documents,
+                    status,
+                    is_available,
+                    created_at,
+                    updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
                 RETURNING *`,
-                [name, brand, type, price_per_day, image_url, decoded.id]
+                [
+                    decoded.id,
+                    body.name || ownerInfo.brand_model, // Use submitted name, fallback to owner's brand_model
+                    body.brand || ownerInfo.brand_model, // Use submitted brand, fallback to owner's brand_model
+                    body.year_of_manufacture || ownerInfo.year_of_manufacture, // Use submitted year, fallback to owner's year_of_manufacture
+                    body.price_per_day || ownerInfo.price_per_day, // Use submitted price, fallback to owner's price_per_day
+                    body.image_url || body.vehicle_photo_url || ownerInfo.vehicle_photo_url, // Use submitted image, or vehicle_photo, fallback to owner's
+                    `Vehicle submitted for approval.`,
+                    `Fuel: ${body.fuel_type || ownerInfo.fuel_type || 'N/A'}, Transmission: ${body.transmission || ownerInfo.transmission || 'N/A'}, Seats: ${body.seating_capacity || ownerInfo.seating_capacity || 'N/A'}`,
+                    body.location || ownerInfo.address || 'N/A',
+                    body.registration_number || ownerInfo.registration_number || 'N/A',
+                    body.insurance_document_url || ownerInfo.insurance_document_url || 'N/A',
+                    body.rc_document_url || ownerInfo.rc_document_url || 'N/A',
+                    'pending_approval',
+                    false
+                ]
             )
 
-            // Create review request
-            await client.query(
-                `INSERT INTO vehicle_review_requests (
-                    vehicle_id, owner_id, status
-                ) VALUES ($1, $2, 'pending')`,
-                [vehicle[0].id, decoded.id]
-            )
+            // Insert into owner_requests
+            const ownerRequestsPayload = {
+                user_id: decoded.id,
+                full_name: ownerInfo.full_name || 'N/A',
+                phone_number: ownerInfo.phone_number || '0000000000',
+                email: ownerInfo.email || decoded.email,
+                address: ownerInfo.address || 'N/A',
+                government_id_type: ownerInfo.government_id_type || 'aadhar',
+                government_id_number: ownerInfo.government_id_number || '000000000000',
+                id_image_url: ownerInfo.id_image_url || 'N/A',
+                selfie_url: ownerInfo.selfie_url || 'N/A',
+                vehicle_type: body.type || ownerInfo.vehicle_type || 'car',
+                brand_model: body.brand || ownerInfo.brand_model || 'Unknown',
+                registration_number: body.registration_number || ownerInfo.registration_number || 'XX00XX0000',
+                year_of_manufacture: body.year_of_manufacture || ownerInfo.year_of_manufacture || 2024,
+                fuel_type: body.fuel_type || ownerInfo.fuel_type || 'petrol',
+                transmission: body.transmission || ownerInfo.transmission || 'manual',
+                seating_capacity: body.seating_capacity || ownerInfo.seating_capacity || 4,
+                vehicle_photo_url: body.image_url || body.vehicle_photo_url || ownerInfo.vehicle_photo_url || 'N/A',
+                insurance_document_url: body.insurance_document_url || ownerInfo.insurance_document_url || 'N/A',
+                rc_document_url: body.rc_document_url || ownerInfo.rc_document_url || 'N/A',
+                price_per_day: body.price_per_day || ownerInfo.price_per_day || 1000,
+                available_from: body.available_from || ownerInfo.available_from || new Date().toISOString().split('T')[0],
+                available_to: body.available_to || ownerInfo.available_to || null,
+                status: 'pending',
+                request_type: 'vehicle_submission',
+                vehicle_id: vehicle[0].id
+            };
 
-            // Update user role to owner if not already
+            console.log("Owner Request Payload for Vehicle Submission:", ownerRequestsPayload);
+
             await client.query(
-                `UPDATE users 
-                SET role = 'owner' 
-                WHERE id = $1 AND role = 'user'`,
-                [decoded.id]
-            )
+                `INSERT INTO owner_requests (
+                    user_id, full_name, phone_number, email, address, government_id_type, government_id_number, id_image_url, selfie_url,
+                    vehicle_type, brand_model, registration_number, year_of_manufacture, fuel_type, transmission, seating_capacity,
+                    vehicle_photo_url, insurance_document_url, rc_document_url, price_per_day, available_from, available_to,
+                    status, request_type, vehicle_id
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                    $10, $11, $12, $13, $14, $15, $16,
+                    $17, $18, $19, $20, $21, $22,
+                    $23, $24, $25
+                )`,
+                [
+                    ownerRequestsPayload.user_id,
+                    ownerRequestsPayload.full_name,
+                    ownerRequestsPayload.phone_number,
+                    ownerRequestsPayload.email,
+                    ownerRequestsPayload.address,
+                    ownerRequestsPayload.government_id_type,
+                    ownerRequestsPayload.government_id_number,
+                    ownerRequestsPayload.id_image_url,
+                    ownerRequestsPayload.selfie_url,
+                    ownerRequestsPayload.vehicle_type,
+                    ownerRequestsPayload.brand_model,
+                    ownerRequestsPayload.registration_number,
+                    ownerRequestsPayload.year_of_manufacture,
+                    ownerRequestsPayload.fuel_type,
+                    ownerRequestsPayload.transmission,
+                    ownerRequestsPayload.seating_capacity,
+                    ownerRequestsPayload.vehicle_photo_url,
+                    ownerRequestsPayload.insurance_document_url,
+                    ownerRequestsPayload.rc_document_url,
+                    ownerRequestsPayload.price_per_day,
+                    ownerRequestsPayload.available_from,
+                    ownerRequestsPayload.available_to,
+                    ownerRequestsPayload.status,
+                    ownerRequestsPayload.request_type,
+                    ownerRequestsPayload.vehicle_id
+                ]
+            );
 
             await client.query('COMMIT')
 
@@ -133,7 +258,13 @@ export async function POST(request: NextRequest) {
             }, { status: 201 })
         } catch (error) {
             await client.query('ROLLBACK')
-            console.error('Error listing vehicle:', error)
+            console.error('Error listing vehicle:', error);
+            if (error && typeof error === 'object' && 'detail' in error) {
+                console.error('DB Error Detail:', error.detail);
+            }
+            if (error && typeof error === 'object' && 'code' in error) {
+                console.error('DB Error Code:', error.code);
+            }
             return NextResponse.json(
                 { error: 'Failed to list vehicle' },
                 { status: 500 }
@@ -142,7 +273,7 @@ export async function POST(request: NextRequest) {
             client.release()
         }
     } catch (error) {
-        console.error('Error in vehicle listing:', error)
+        console.error('Error in vehicles endpoint:', error)
         return NextResponse.json(
             { error: 'Failed to process request' },
             { status: 500 }

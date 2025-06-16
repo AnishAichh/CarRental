@@ -15,26 +15,14 @@ interface MenuItem {
     warning?: boolean
 }
 
-export default function Navbar() {
-    const [user, setUser] = useState<User | null>(null)
-    const [loading, setLoading] = useState(true)
+interface NavbarProps {
+    user: User | null
+}
+
+export default function Navbar({ user }: NavbarProps) {
+    const [loading, setLoading] = useState(false)
     const router = useRouter()
     const pathname = usePathname()
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const userData = await getAuthUser()
-                setUser(userData)
-            } catch (error) {
-                setUser(null)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        fetchUser()
-    }, [])
 
     const handleLogout = async () => {
         try {
@@ -47,7 +35,6 @@ export default function Navbar() {
                 throw new Error('Logout failed')
             }
 
-            setUser(null)
             router.push('/login')
             router.refresh() // Force a refresh to clear any cached data
         } catch (error) {
@@ -58,11 +45,15 @@ export default function Navbar() {
     const userMenuItems: MenuItem[] = [
         {
             label: 'Dashboard',
-            onClick: () => router.push(`/dashboard/${user?.role}`),
+            onClick: () => user?.id ? router.push(`/dashboard/user?user=${user.id}`) : router.push('/login'),
         },
         {
             label: 'Profile',
-            onClick: () => router.push('/profile'),
+            onClick: () => router.push(`/dashboard/user/profile?user=${user?.id}`),
+        },
+        {
+            label: 'My Bookings',
+            onClick: () => user?.id ? router.push(`/dashboard/user/bookings?user=${user.id}`) : router.push('/login'),
         },
         {
             label: 'Logout',
@@ -70,6 +61,14 @@ export default function Navbar() {
             danger: true,
         },
     ]
+
+    if (user?.role === 'user') {
+        userMenuItems.splice(3, 0, {
+            label: 'Complete KYC',
+            onClick: () => user?.id ? router.push(`/dashboard/kyc?user=${user.id}`) : router.push('/login'),
+            warning: true,
+        })
+    }
 
     if (user?.role === 'owner') {
         userMenuItems.splice(1, 0, {
@@ -82,14 +81,6 @@ export default function Navbar() {
         userMenuItems.splice(1, 0, {
             label: 'Admin Panel',
             onClick: () => router.push('/dashboard/admin'),
-        })
-    }
-
-    if (user?.role === 'user' && !user.kycVerified) {
-        userMenuItems.splice(1, 0, {
-            label: 'Complete KYC',
-            onClick: () => router.push('/profile?kyc_required=true'),
-            warning: true,
         })
     }
 
@@ -106,36 +97,40 @@ export default function Navbar() {
                     <div className="flex items-center space-x-4">
                         {!loading && (
                             <>
+                                {user && user.role === 'user' && (
+                                    <>
+                                        <Link href={`/dashboard/user/browse-vehicles?user=${user.id}`}>
+                                            <Button variant="outline">
+                                                Browse Vehicles
+                                            </Button>
+                                        </Link>
+                                        {!user.kycVerified && (
+                                            <Link href={`/dashboard/kyc?user=${user.id}`}>
+                                                <Button variant="outline" className="border-yellow-500 text-yellow-700 hover:bg-yellow-50">
+                                                    Complete KYC
+                                                </Button>
+                                            </Link>
+                                        )}
+                                        {user.kycVerified && (
+                                            <Link href="/dashboard/become-owner">
+                                                <Button variant="outline">
+                                                    Become an Owner
+                                                </Button>
+                                            </Link>
+                                        )}
+                                    </>
+                                )}
                                 {user ? (
                                     <>
-                                        {user.role === 'user' && (
-                                            <>
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => router.push('/browse-vehicles')}
-                                                >
-                                                    Browse Vehicles
-                                                </Button>
-                                                {!user.kycVerified ? (
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => router.push('/profile?kyc_required=true')}
-                                                    >
-                                                        Complete KYC
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => router.push('/become-owner')}
-                                                    >
-                                                        Become an Owner
-                                                    </Button>
-                                                )}
-                                            </>
-                                        )}
+                                        <button
+                                            onClick={handleLogout}
+                                            className="px-4 py-2 rounded-md text-sm font-medium text-red-600 border border-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                        >
+                                            Logout
+                                        </button>
                                         <Dropdown
                                             trigger={
-                                                <button className="flex items-center space-x-2 rounded-full focus:outline-none">
+                                                <div className="flex items-center space-x-2 rounded-full focus:outline-none cursor-pointer">
                                                     <Avatar
                                                         src={user.avatar}
                                                         alt={user.name}
@@ -145,22 +140,23 @@ export default function Navbar() {
                                                     <span className="text-sm font-medium text-gray-700">
                                                         {user.name}
                                                     </span>
-                                                </button>
+                                                </div>
                                             }
                                             items={userMenuItems}
                                         />
                                     </>
                                 ) : (
                                     <>
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => router.push('/login')}
-                                        >
-                                            Login
-                                        </Button>
-                                        <Button onClick={() => router.push('/register')}>
-                                            Register
-                                        </Button>
+                                        <Link href="/login">
+                                            <Button variant="outline">
+                                                Login
+                                            </Button>
+                                        </Link>
+                                        <Link href="/register">
+                                            <Button>
+                                                Register
+                                            </Button>
+                                        </Link>
                                     </>
                                 )}
                             </>

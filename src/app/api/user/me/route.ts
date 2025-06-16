@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
-import { verifyJWT } from '@/lib/auth'
+import { verifyJWT, refreshJWTIfNeeded } from '@/lib/auth'
 import { JwtPayload } from 'jsonwebtoken'
+import { User } from '@/lib/types'
 
 export async function GET(request: NextRequest) {
     try {
@@ -41,10 +42,23 @@ export async function GET(request: NextRequest) {
                 )
             }
 
-            // Remove sensitive information
-            const { password, ...userData } = userRows[0]
+            // Remove sensitive information and map to frontend User type
+            const userFromDb = userRows[0]
+            const user: User = {
+                id: userFromDb.id,
+                name: userFromDb.name,
+                email: userFromDb.email,
+                role: userFromDb.role, // 'user' | 'owner' | 'admin'
+                avatar: userFromDb.avatar,
+                kycVerified: userFromDb.kyc_status === 'approved',
+                isAdmin: userFromDb.is_admin,
+            }
 
-            return NextResponse.json({ user: userData })
+            // Prepare response
+            let response = NextResponse.json({ user: user })
+            // Refresh JWT if needed
+            await refreshJWTIfNeeded(token, response)
+            return response
         } catch (error) {
             console.error('Error fetching user:', error)
             return NextResponse.json(

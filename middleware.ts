@@ -23,11 +23,30 @@ export async function middleware(req: NextRequest) {
         const user = decoded as JwtPayload
 
         // 1. Admin routes check
-        if (path.startsWith('/admin') && !user.isAdmin) {
-            return NextResponse.redirect(new URL('/', req.url))
+        if (path.startsWith('/admin') || path.startsWith('/dashboard/admin')) {
+            if (!user.isAdmin) {
+                return NextResponse.redirect(new URL('/', req.url))
+            }
+            return NextResponse.next()
         }
 
-        // 2. Booking routes require KYC
+        // 2. Owner routes check
+        if (path.startsWith('/dashboard/owner')) {
+            if (user.role !== 'owner' && !user.isAdmin) {
+                return NextResponse.redirect(new URL('/dashboard', req.url))
+            }
+            return NextResponse.next()
+        }
+
+        // 3. User routes check
+        if (path.startsWith('/dashboard/user')) {
+            if (user.role !== 'user' && !user.isAdmin) {
+                return NextResponse.redirect(new URL('/dashboard', req.url))
+            }
+            return NextResponse.next()
+        }
+
+        // 4. Booking routes require KYC
         if (path.startsWith('/vehicles') || path.startsWith('/bookings')) {
             const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/me`, {
                 headers: { Cookie: `token=${token}` }
@@ -39,6 +58,11 @@ export async function middleware(req: NextRequest) {
             }
         }
 
+        // 5. Redirect admin users to admin dashboard if they try to access other dashboards
+        if (path.startsWith('/dashboard') && user.isAdmin) {
+            return NextResponse.redirect(new URL('/dashboard/admin', req.url))
+        }
+
         return NextResponse.next()
     } catch {
         return NextResponse.redirect(new URL('/login', req.url))
@@ -47,9 +71,10 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
     matcher: [
+        '/dashboard/:path*',
         '/vehicles/:path*',
-        '/bookings',
-        '/earnings',
+        '/bookings/:path*',
+        '/earnings/:path*',
         '/admin/:path*'
     ]
 }

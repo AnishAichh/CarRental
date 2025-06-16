@@ -97,13 +97,13 @@ export default function VehicleDetailPage() {
 
         if (!user) {
             setError('Please log in to book this vehicle')
-            router.push('/login?redirect=' + encodeURIComponent(`/vehicles/${vehicleId}`))
+            router.push('/login?redirect=' + encodeURIComponent(`/dashboard/vehicles/${vehicleId}`))
             return
         }
 
         if (!user.is_kyc_verified || user.kyc_status !== 'approved') {
             setError('You must complete KYC verification before booking')
-            router.push('/kyc?redirect=' + encodeURIComponent(`/vehicles/${vehicleId}`))
+            router.push('/kyc?redirect=' + encodeURIComponent(`/dashboard/vehicles/${vehicleId}`))
             return
         }
 
@@ -141,15 +141,32 @@ export default function VehicleDetailPage() {
         }
 
         try {
-            const res = await fetch('/api/bookings', {
+            const payload = {
+                fullName: "John Doe", // Replace with actual fullName
+                phoneNumber: "1234567890", // Replace with actual phoneNumber
+                drivingLicenseUrl: "https://example.com/driving-license.jpg", // Replace with actual drivingLicenseUrl
+                addressProofUrl: "https://example.com/address-proof.jpg", // Replace with actual addressProofUrl
+                ownershipDeclaration: "I declare I own this vehicle", // Replace with actual ownershipDeclaration
+                // vehicle info
+                vehicleType: vehicle?.type,
+                brandModel: vehicle?.brand,
+                registrationNumber: "12345", // Replace with actual registrationNumber
+                yearOfManufacture: "2024", // Replace with actual yearOfManufacture
+                fuelType: "Petrol", // Replace with actual fuelType
+                transmission: "Manual", // Replace with actual transmission
+                seatingCapacity: 5, // Replace with actual seatingCapacity
+                vehiclePhotoUrl: vehicle?.image_url, // Replace with actual vehiclePhotoUrl
+                insuranceDocumentUrl: "https://example.com/insurance-document.jpg", // Replace with actual insuranceDocumentUrl
+                rcDocumentUrl: "https://example.com/rc-document.jpg", // Replace with actual rcDocumentUrl
+                pricePerDay: vehicle?.price_per_day, // Replace with actual pricePerDay
+                availableFrom: startDate,
+                availableTo: endDate
+            }
+
+            const res = await fetch('/api/owner-request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    vehicle_id: vehicle?.id,
-                    start_date: startDate,
-                    end_date: endDate
-                })
+                body: JSON.stringify(payload)
             })
 
             const data = await res.json()
@@ -159,7 +176,7 @@ export default function VehicleDetailPage() {
                     setError('This vehicle is already booked for your selected dates. Please choose different dates.')
                 } else if (data.error === 'KYC verification required to make bookings') {
                     setError('You must complete KYC verification before booking')
-                    router.push('/kyc?redirect=' + encodeURIComponent(`/vehicles/${vehicleId}`))
+                    router.push('/kyc?redirect=' + encodeURIComponent(`/dashboard/vehicles/${vehicleId}`))
                 } else {
                     throw new Error(data.error || 'Booking failed')
                 }
@@ -205,7 +222,7 @@ export default function VehicleDetailPage() {
                     {!user && (
                         <div className="mt-2">
                             <Link
-                                href={`/login?redirect=${encodeURIComponent(`/vehicles/${vehicleId}`)}`}
+                                href={`/login?redirect=${encodeURIComponent(`/dashboard/vehicles/${vehicleId}`)}`}
                                 className="text-blue-600 hover:underline"
                             >
                                 Click here to log in
@@ -215,7 +232,7 @@ export default function VehicleDetailPage() {
                     {user && !user.is_kyc_verified && (
                         <div className="mt-2">
                             <Link
-                                href={`/kyc?redirect=${encodeURIComponent(`/vehicles/${vehicleId}`)}`}
+                                href={`/kyc?redirect=${encodeURIComponent(`/dashboard/vehicles/${vehicleId}`)}`}
                                 className="text-blue-600 hover:underline"
                             >
                                 Click here to complete KYC

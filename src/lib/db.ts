@@ -5,6 +5,21 @@ const pool = new Pool({
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 })
 
+// Add error handling for the pool
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err)
+    process.exit(-1)
+})
+
+// Test the connection
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+        console.error('Error connecting to the database:', err)
+    } else {
+        console.log('Database connected successfully')
+    }
+})
+
 export async function query<T = any>(
     text: string,
     params?: any[]
@@ -13,6 +28,13 @@ export async function query<T = any>(
     try {
         const result = await client.query(text, params)
         return result.rows
+    } catch (error) {
+        console.error('Error executing query:', {
+            text,
+            params,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        })
+        throw error
     } finally {
         client.release()
     }

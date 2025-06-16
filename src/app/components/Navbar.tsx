@@ -40,13 +40,28 @@ export default function Navbar() {
 
     const handleLogout = async () => {
         try {
-            await fetch('/api/auth/logout', { method: 'POST' })
-            setUser(null)
-            router.push('/')
+            const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Logout failed');
+            }
+
+            // Clear user state
+            setUser(null);
+
+            // Force a hard redirect to home page to clear any cached state
+            window.location.href = '/';
         } catch (err) {
-            console.error('Error logging out:', err)
+            console.error('Error logging out:', err);
+            // Still redirect to home page even if there's an error
+            window.location.href = '/';
         }
-    }
+    };
 
     const isActive = (path: string) => pathname === path
 
@@ -65,8 +80,8 @@ export default function Navbar() {
                             <Link
                                 href="/vehicles"
                                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/vehicles')
-                                        ? 'border-blue-500 text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                    ? 'border-blue-500 text-gray-900'
+                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                     }`}
                             >
                                 Browse Vehicles
@@ -75,8 +90,8 @@ export default function Navbar() {
                                 <Link
                                     href="/dashboard/vehicles"
                                     className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/dashboard/vehicles')
-                                            ? 'border-blue-500 text-gray-900'
-                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                        ? 'border-blue-500 text-gray-900'
+                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                         }`}
                                 >
                                     My Vehicles
@@ -86,8 +101,8 @@ export default function Navbar() {
                                 <Link
                                     href="/admin"
                                     className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/admin')
-                                            ? 'border-blue-500 text-gray-900'
-                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                        ? 'border-blue-500 text-gray-900'
+                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                         }`}
                                 >
                                     Admin
@@ -163,8 +178,8 @@ export default function Navbar() {
                         <Link
                             href="/vehicles"
                             className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${isActive('/vehicles')
-                                    ? 'border-blue-500 text-blue-700 bg-blue-50'
-                                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+                                ? 'border-blue-500 text-blue-700 bg-blue-50'
+                                : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
                                 }`}
                         >
                             Browse Vehicles
@@ -173,8 +188,8 @@ export default function Navbar() {
                             <Link
                                 href="/dashboard/vehicles"
                                 className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${isActive('/dashboard/vehicles')
-                                        ? 'border-blue-500 text-blue-700 bg-blue-50'
-                                        : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+                                    ? 'border-blue-500 text-blue-700 bg-blue-50'
+                                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
                                     }`}
                             >
                                 My Vehicles
@@ -184,8 +199,8 @@ export default function Navbar() {
                             <Link
                                 href="/admin"
                                 className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${isActive('/admin')
-                                        ? 'border-blue-500 text-blue-700 bg-blue-50'
-                                        : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+                                    ? 'border-blue-500 text-blue-700 bg-blue-50'
+                                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
                                     }`}
                             >
                                 Admin
