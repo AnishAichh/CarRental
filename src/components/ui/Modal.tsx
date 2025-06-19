@@ -58,7 +58,7 @@ const Modal = forwardRef<HTMLDivElement, ModalProps>(
                             <div
                                 ref={ref}
                                 className={twMerge(
-                                    'inline-block transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:p-6 sm:align-middle',
+                                    'inline-block transform overflow-hidden rounded-lg bg-white bg-gradient-to-br from-emerald-50/60 via-white to-emerald-100/40 px-4 pt-5 pb-4 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:p-6 sm:align-middle font-light',
                                     sizes[size],
                                     className
                                 )}
@@ -67,7 +67,7 @@ const Modal = forwardRef<HTMLDivElement, ModalProps>(
                                 {title && (
                                     <Dialog.Title
                                         as="h3"
-                                        className="text-lg font-medium leading-6 text-gray-900 mb-4"
+                                        className="text-lg font-light leading-6 text-emerald-900 mb-4"
                                     >
                                         {title}
                                     </Dialog.Title>

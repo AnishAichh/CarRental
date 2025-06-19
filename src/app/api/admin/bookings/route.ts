@@ -11,8 +11,11 @@ export async function GET() {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const decoded = verifyJWT(token)
-    if (typeof decoded !== 'object' || decoded.is_admin !== true) {
+    const decoded = await verifyJWT(token)
+    if (
+        typeof decoded !== 'object' ||
+        !decoded.isAdmin
+    ) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

@@ -90,7 +90,7 @@ export default function Navbar({ user }: NavbarProps) {
                 <div className="flex h-16 justify-between">
                     <div className="flex">
                         <Link href="/" className="flex items-center">
-                            <span className="text-xl font-bold text-blue-600">DriveX</span>
+                            <span className="text-xl font-bold text-blue-600">Vheego</span>
                         </Link>
                     </div>
 

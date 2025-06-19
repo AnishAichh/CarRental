@@ -47,7 +47,7 @@ const Dropdown = ({ trigger, items, align = 'right', className }: DropdownProps)
                                         onClick={item.onClick}
                                         className={twMerge(
                                             'flex w-full items-center px-4 py-2 text-sm',
-                                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                            active ? 'bg-emerald-50 text-emerald-900' : 'text-emerald-700',
                                             item.danger ? 'text-red-600 hover:bg-red-50' : ''
                                         )}
                                     >

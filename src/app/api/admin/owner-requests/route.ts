@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         }
 
         const decoded = await verifyJWT(token) as JwtPayload
-        if (!decoded || !decoded.id || !decoded.is_admin) {
+        if (!decoded || !decoded.id || !decoded.isAdmin) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 

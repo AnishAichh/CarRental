@@ -9,7 +9,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
     ({ className, label, error, fullWidth = false, ...props }, ref) => {
-        const baseStyles = 'block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black'
+        const baseStyles = 'block w-full rounded-md border-emerald-200 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm text-black font-light'
         const errorStyles = error ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500' : ''
         const width = fullWidth ? 'w-full' : ''
 
@@ -18,7 +18,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
                 {label && (
                     <label
                         htmlFor={props.id}
-                        className="block text-sm font-medium text-gray-700 mb-1"
+                        className="block text-sm font-light text-emerald-700 mb-1"
                     >
                         {label}
                     </label>

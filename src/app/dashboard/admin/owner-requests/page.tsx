@@ -88,12 +88,13 @@ export default function OwnerRequests() {
 
     const handleRequest = async (requestId: number, action: 'approve' | 'reject') => {
         try {
-            const response = await fetch(`/api/admin/owner-requests/${requestId}`, {
+            const response = await fetch('/api/admin/owner-requests', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ action }),
+                body: JSON.stringify({ requestId, action, adminNotes: null }),
+                credentials: 'include',
             })
 
             if (!response.ok) {

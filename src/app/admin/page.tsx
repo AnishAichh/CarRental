@@ -8,7 +8,7 @@ export default function AdminHomePage() {
     return (
         <main className="min-h-screen bg-gray-100 p-8">
             <div className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md">
-                <h1 className="text-3xl font-bold mb-4 text-center">DriveX Admin Dashboard</h1>
+                <h1 className="text-3xl font-bold mb-4 text-center">Vheego Admin Dashboard</h1>
                 <p className="mb-6 text-center text-gray-600">Manage everything from one place</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

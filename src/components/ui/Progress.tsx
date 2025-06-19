@@ -19,8 +19,8 @@ const Progress = forwardRef<HTMLDivElement, ProgressProps>(
         }
 
         const variants = {
-            default: 'bg-blue-600',
-            success: 'bg-green-600',
+            default: 'bg-emerald-600',
+            success: 'bg-emerald-600',
             error: 'bg-red-600',
             warning: 'bg-yellow-600',
         }
@@ -36,7 +36,7 @@ const Progress = forwardRef<HTMLDivElement, ProgressProps>(
                     />
                 </div>
                 {showValue && (
-                    <div className="mt-1 text-sm text-gray-600 text-right">
+                    <div className="mt-1 text-sm text-gray-600 text-right font-light">
                         {Math.round(percentage)}%
                     </div>
                 )}

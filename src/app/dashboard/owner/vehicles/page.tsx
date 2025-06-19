@@ -33,6 +33,7 @@ export default function OwnerVehiclesPage() {
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
     const searchParams = useSearchParams()
+    const [loadingId, setLoadingId] = useState<number | null>(null)
 
     useEffect(() => {
         const fetchData = async () => {
@@ -83,6 +84,28 @@ export default function OwnerVehiclesPage() {
 
         fetchData()
     }, [router, searchParams])
+
+    const handleToggleAvailability = async (vehicle: Vehicle) => {
+        setLoadingId(vehicle.id)
+        try {
+            const res = await fetch(`/api/owner/vehicles/${vehicle.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ availability: !vehicle.is_available })
+            })
+            if (res.ok) {
+                setVehicles(prev => prev.map(v =>
+                    v.id === vehicle.id ? { ...v, is_available: !vehicle.is_available } : v
+                ))
+            } else {
+                alert('Failed to update availability')
+            }
+        } catch (e) {
+            alert('Error updating availability')
+        } finally {
+            setLoadingId(null)
+        }
+    }
 
     if (isLoading) {
         return (
@@ -165,12 +188,23 @@ export default function OwnerVehiclesPage() {
                                         <span className="text-yellow-500">⭐</span>
                                         <span className="ml-1">{vehicle.rating.toFixed(1)}</span>
                                     </div>
-                                    <Link
-                                        href={`/dashboard/owner/vehicles/${vehicle.id}?user=${user.id}`}
-                                        className="text-blue-600 hover:text-blue-800"
-                                    >
-                                        View Details →
-                                    </Link>
+                                    <div className="flex items-center space-x-2">
+                                        {vehicle.status === 'approved' && (
+                                            <button
+                                                className={`px-3 py-1 rounded text-sm border ${vehicle.is_available ? 'bg-green-100 border-green-400 text-green-800' : 'bg-red-100 border-red-400 text-red-800'} ${loadingId === vehicle.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                onClick={() => handleToggleAvailability(vehicle)}
+                                                disabled={loadingId === vehicle.id}
+                                            >
+                                                {vehicle.is_available ? 'Mark Unavailable' : 'Mark Available'}
+                                            </button>
+                                        )}
+                                        <Link
+                                            href={`/dashboard/owner/vehicles/${vehicle.id}?user=${user.id}`}
+                                            className="text-blue-600 hover:text-blue-800 ml-2"
+                                        >
+                                            View Details →
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </div>

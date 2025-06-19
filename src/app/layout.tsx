@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DriveX - Self-Drive Vehicle Rentals",
-  description: "Rent or list your own car or bike for self-drive across India. KYC secured, admin verified, decentralized bookings.",
+  title: "Vheego - Decentralized Vehicle Rentals",
+  description: "Vheego is a decentralized self-drive and driver-based vehicle rental platform for users, owners, drivers, and businesses. Instantly find or list cars and bikes, with or without a driver, and unlock curated travel experiences across India.",
 };
 
 export default function RootLayout({

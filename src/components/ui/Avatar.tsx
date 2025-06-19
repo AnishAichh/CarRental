@@ -20,9 +20,9 @@ export default function Avatar({ src, alt, size = 'md', fallback }: AvatarProps)
     if (!src || error) {
         return (
             <div
-                className={`${sizeClasses[size]} rounded-full bg-blue-100 flex items-center justify-center`}
+                className={`${sizeClasses[size]} rounded-full bg-emerald-100 flex items-center justify-center`}
             >
-                <span className="text-blue-600 font-medium">
+                <span className="text-emerald-600 font-light">
                     {fallback ? fallback[0].toUpperCase() : alt[0].toUpperCase()}
                 </span>
             </div>

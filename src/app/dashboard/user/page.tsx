@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { User } from '@/lib/types'
 import { getAuthUser } from '@/lib/api' // Keep if User type is needed, but fetching user is moved to layout
+import { BellIcon } from '@heroicons/react/24/outline';
+import Confetti from 'react-confetti';
 
 type OwnerRequest = {
     id: number
@@ -19,6 +21,11 @@ export default function UserDashboardPage() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const userId = searchParams?.get('user')
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifLoading, setNotifLoading] = useState(false);
+    const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+    const [showConfetti, setShowConfetti] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -52,6 +59,30 @@ export default function UserDashboardPage() {
         fetchData()
     }, [router])
 
+    const fetchNotifications = async () => {
+        setNotifLoading(true);
+        try {
+            const res = await fetch('/api/user/notifications');
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+            }
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
+    const handleBellClick = () => {
+        setShowNotifications(true);
+        fetchNotifications();
+    };
+
+    const handleNotifClick = (notif: any) => {
+        setSelectedNotif(notif);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+    };
+
     if (loading) {
         return (
             <div className="animate-pulse">
@@ -66,7 +97,67 @@ export default function UserDashboardPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative">
+            {/* Notification Bell */}
+            <button
+                className="absolute top-4 right-4 z-20"
+                onClick={handleBellClick}
+                aria-label="Notifications"
+            >
+                <BellIcon className="h-8 w-8 text-emerald-600" />
+                {notifications.some(n => !n.is_read) && (
+                    <span className="absolute top-0 right-0 block h-3 w-3 rounded-full bg-emerald-500 border-2 border-white"></span>
+                )}
+            </button>
+
+            {/* Notification Modal */}
+            {showNotifications && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full relative">
+                        <button className="absolute top-2 right-2 text-gray-500" onClick={() => setShowNotifications(false)}>&times;</button>
+                        <h3 className="text-lg font-light mb-4 text-emerald-900">Notifications</h3>
+                        {notifLoading ? (
+                            <div>Loading...</div>
+                        ) : notifications.length === 0 ? (
+                            <div className="text-gray-600">No notifications yet.</div>
+                        ) : (
+                            <ul className="divide-y">
+                                {notifications.map((notif) => (
+                                    <li
+                                        key={notif.id}
+                                        className="py-3 cursor-pointer hover:bg-blue-50 rounded"
+                                        onClick={() => handleNotifClick(notif)}
+                                    >
+                                        <div className="font-semibold text-black">{notif.title}</div>
+                                        <div className="text-gray-700 text-sm">{notif.message.slice(0, 60)}...</div>
+                                        <div className="text-xs text-gray-400">{new Date(notif.created_at).toLocaleString()}</div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Notification Details Modal with Confetti */}
+            {selectedNotif && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full relative">
+                        <button className="absolute top-2 right-2 text-gray-500" onClick={() => setSelectedNotif(null)}>&times;</button>
+                        {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} numberOfPieces={300} />}
+                        <h2 className="text-2xl font-bold mb-4 text-green-700">🎉 Booking Confirmed!</h2>
+                        <div className="mb-2 font-semibold text-black">{selectedNotif.title}</div>
+                        <div className="mb-4 text-gray-800 whitespace-pre-line">{selectedNotif.message}</div>
+                        <button
+                            className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+                            onClick={() => setSelectedNotif(null)}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Welcome Section */}
             <div className="bg-white shadow rounded-lg p-6">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">

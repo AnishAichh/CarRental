@@ -3,10 +3,8 @@ import pool from '@/lib/db'
 import { verifyJWT } from '@/lib/auth'
 import { JwtPayload } from 'jsonwebtoken'
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, context: any) {
+    const params = await context.params;
     try {
         const token = request.cookies.get('token')?.value
         if (!token) {
@@ -99,10 +97,8 @@ export async function PUT(
     }
 }
 
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, context: any) {
+    const params = await context.params;
     try {
         const token = request.cookies.get('token')?.value
         if (!token) {

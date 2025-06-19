@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { User } from '@/lib/types'
+import { BellIcon } from '@heroicons/react/24/outline';
+import Confetti from 'react-confetti';
 
 type Vehicle = {
     id: number
@@ -12,6 +14,7 @@ type Vehicle = {
     total_bookings: number
     total_revenue: number
     rating: number
+    is_available: boolean
 }
 
 interface Booking {
@@ -46,6 +49,12 @@ export default function OwnerDashboardPage() {
     const [bookings, setBookings] = useState<Booking[]>([])
     const [bookingsLoading, setBookingsLoading] = useState(true)
     const [bookingsError, setBookingsError] = useState<string | null>(null)
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifLoading, setNotifLoading] = useState(false);
+    const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [toggleLoadingId, setToggleLoadingId] = useState<number | null>(null)
 
     useEffect(() => {
         const fetchData = async () => {
@@ -118,6 +127,52 @@ export default function OwnerDashboardPage() {
         fetchBookings()
     }, [])
 
+    const fetchNotifications = async () => {
+        setNotifLoading(true);
+        try {
+            const res = await fetch('/api/user/notifications');
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+            }
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
+    const handleBellClick = () => {
+        setShowNotifications(true);
+        fetchNotifications();
+    };
+
+    const handleNotifClick = (notif: any) => {
+        setSelectedNotif(notif);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+    };
+
+    const handleToggleAvailability = async (vehicleId: number, currentAvailable: boolean) => {
+        setToggleLoadingId(vehicleId)
+        try {
+            const res = await fetch(`/api/owner/vehicles/${vehicleId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ availability: !currentAvailable })
+            })
+            if (res.ok) {
+                setVehicles(prev => prev.map(v =>
+                    v.id === vehicleId ? { ...v, is_available: !currentAvailable } : v
+                ))
+            } else {
+                alert('Failed to update availability')
+            }
+        } catch (e) {
+            alert('Error updating availability')
+        } finally {
+            setToggleLoadingId(null)
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="max-w-7xl mx-auto p-6">
@@ -149,7 +204,71 @@ export default function OwnerDashboardPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            {/* Notification Bell and Modal for User Mode */}
+            {!isOwnerMode && (
+                <>
+                    <button
+                        className="absolute top-4 right-4 z-20"
+                        onClick={handleBellClick}
+                        aria-label="Notifications"
+                    >
+                        <BellIcon className="h-8 w-8 text-blue-600" />
+                        {notifications.some(n => !n.is_read) && (
+                            <span className="absolute top-0 right-0 block h-3 w-3 rounded-full bg-red-500 border-2 border-white"></span>
+                        )}
+                    </button>
+
+                    {/* Notification Modal */}
+                    {showNotifications && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                            <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full relative">
+                                <button className="absolute top-2 right-2 text-gray-500" onClick={() => setShowNotifications(false)}>&times;</button>
+                                <h3 className="text-lg font-bold mb-4 text-black">Notifications</h3>
+                                {notifLoading ? (
+                                    <div>Loading...</div>
+                                ) : notifications.length === 0 ? (
+                                    <div className="text-gray-600">No notifications yet.</div>
+                                ) : (
+                                    <ul className="divide-y">
+                                        {notifications.map((notif) => (
+                                            <li
+                                                key={notif.id}
+                                                className="py-3 cursor-pointer hover:bg-blue-50 rounded"
+                                                onClick={() => handleNotifClick(notif)}
+                                            >
+                                                <div className="font-semibold text-black">{notif.title}</div>
+                                                <div className="text-gray-700 text-sm">{notif.message.slice(0, 60)}...</div>
+                                                <div className="text-xs text-gray-400">{new Date(notif.created_at).toLocaleString()}</div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Notification Details Modal with Confetti */}
+                    {selectedNotif && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full relative">
+                                <button className="absolute top-2 right-2 text-gray-500" onClick={() => setSelectedNotif(null)}>&times;</button>
+                                {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} numberOfPieces={300} />}
+                                <h2 className="text-2xl font-bold mb-4 text-green-700">🎉 Booking Confirmed!</h2>
+                                <div className="mb-2 font-semibold text-black">{selectedNotif.title}</div>
+                                <div className="mb-4 text-gray-800 whitespace-pre-line">{selectedNotif.message}</div>
+                                <button
+                                    className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+                                    onClick={() => setSelectedNotif(null)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
             {/* Mode Toggle */}
             <div className="flex justify-center mt-6 mb-8">
                 <button
@@ -176,7 +295,7 @@ export default function OwnerDashboardPage() {
                         <div className="bg-white rounded-lg shadow-sm p-6">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-lg font-semibold text-gray-900">Your Vehicles</h2>
-                                <Link href="/dashboard/owner/vehicles?user=" className="text-blue-600 hover:underline text-sm">View All →</Link>
+                                <Link href={user ? `/dashboard/owner/vehicles?user=${user.id}` : '#'} className="text-blue-600 hover:underline text-sm">View All →</Link>
                             </div>
                             {vehicles.length > 0 ? (
                                 <div className="space-y-4">
@@ -198,9 +317,20 @@ export default function OwnerDashboardPage() {
                                                     {vehicle.status === 'approved' ? 'Active' : capitalizeFirstLetter(vehicle.status)}
                                                 </span>
                                             </div>
-                                            <div className="mt-2 flex items-center">
-                                                <span className="text-yellow-500">⭐</span>
-                                                <span className="ml-1 text-sm">{vehicle.rating.toFixed(1)}</span>
+                                            <div className="mt-2 flex items-center space-x-4">
+                                                <div className="flex items-center">
+                                                    <span className="text-yellow-500">⭐</span>
+                                                    <span className="ml-1 text-sm">{vehicle.rating.toFixed(1)}</span>
+                                                </div>
+                                                {(vehicle.status === 'approved' || vehicle.status === 'active') && (
+                                                    <button
+                                                        className={`px-3 py-1 rounded text-sm border ${vehicle.is_available ? 'bg-green-100 border-green-400 text-green-800' : 'bg-red-100 border-red-400 text-red-800'} ${toggleLoadingId === vehicle.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        onClick={() => handleToggleAvailability(vehicle.id, vehicle.is_available)}
+                                                        disabled={toggleLoadingId === vehicle.id}
+                                                    >
+                                                        {vehicle.is_available ? 'Mark Unavailable' : 'Mark Available'}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ))}

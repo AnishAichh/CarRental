@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { verifyJWT } from '@/lib/auth'
 import { JwtPayload } from 'jsonwebtoken'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 export async function GET(request: NextRequest) {
     try {
@@ -131,50 +129,64 @@ export async function POST(request: NextRequest) {
             const formData = await request.formData();
             console.log('Form data received');
 
-            const session = await getServerSession(authOptions);
-            if (!session?.user) {
-                console.log('No session found');
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-
-            console.log('Session user:', session.user);
-
             // Insert vehicle with details from body, falling back to ownerInfo if needed
-            const { rows: vehicle } = await client.query(
+            const { rows: vehicleRows } = await client.query(
                 `INSERT INTO vehicles (
                     owner_id,
                     name,
+                    brand,
                     model,
                     year,
-                    price_per_day,
-                    image_url,
+                    color,
+                    registration_number,
+                    license_plate,
+                    vin,
+                    mileage,
+                    fuel_type,
+                    transmission,
+                    seats,
+                    doors,
+                    daily_rate,
+                    weekly_rate,
+                    monthly_rate,
                     description,
                     features,
-                    location,
-                    registration_number,
-                    insurance_details,
-                    documents,
+                    rules,
                     status,
                     is_available,
+                    location,
+                    latitude,
+                    longitude,
                     created_at,
                     updated_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW(), NOW())
                 RETURNING *`,
                 [
                     decoded.id,
-                    body.name || ownerInfo.brand_model, // Use submitted name, fallback to owner's brand_model
-                    body.brand || ownerInfo.brand_model, // Use submitted brand, fallback to owner's brand_model
-                    body.year_of_manufacture || ownerInfo.year_of_manufacture, // Use submitted year, fallback to owner's year_of_manufacture
-                    body.price_per_day || ownerInfo.price_per_day, // Use submitted price, fallback to owner's price_per_day
-                    body.image_url || body.vehicle_photo_url || ownerInfo.vehicle_photo_url, // Use submitted image, or vehicle_photo, fallback to owner's
-                    `Vehicle submitted for approval.`,
-                    `Fuel: ${body.fuel_type || ownerInfo.fuel_type || 'N/A'}, Transmission: ${body.transmission || ownerInfo.transmission || 'N/A'}, Seats: ${body.seating_capacity || ownerInfo.seating_capacity || 'N/A'}`,
-                    body.location || ownerInfo.address || 'N/A',
-                    body.registration_number || ownerInfo.registration_number || 'N/A',
-                    body.insurance_document_url || ownerInfo.insurance_document_url || 'N/A',
-                    body.rc_document_url || ownerInfo.rc_document_url || 'N/A',
-                    'pending_approval',
-                    false
+                    body.name,
+                    body.brand,
+                    body.model,
+                    body.year,
+                    body.color,
+                    body.registration_number,
+                    body.license_plate,
+                    body.vin,
+                    body.mileage,
+                    body.fuel_type,
+                    body.transmission,
+                    body.seats,
+                    body.doors,
+                    body.daily_rate,
+                    body.weekly_rate,
+                    body.monthly_rate,
+                    body.description,
+                    body.features,
+                    body.rules,
+                    'pending',
+                    false,
+                    body.location,
+                    body.latitude,
+                    body.longitude
                 ]
             )
 
@@ -204,7 +216,7 @@ export async function POST(request: NextRequest) {
                 available_to: body.available_to || ownerInfo.available_to || null,
                 status: 'pending',
                 request_type: 'vehicle_submission',
-                vehicle_id: vehicle[0].id
+                vehicle_id: vehicleRows[0].id
             };
 
             console.log("Owner Request Payload for Vehicle Submission:", ownerRequestsPayload);
@@ -254,7 +266,7 @@ export async function POST(request: NextRequest) {
 
             return NextResponse.json({
                 message: 'Vehicle listed successfully. Awaiting admin approval.',
-                vehicle: vehicle[0]
+                vehicle: vehicleRows[0]
             }, { status: 201 })
         } catch (error) {
             await client.query('ROLLBACK')

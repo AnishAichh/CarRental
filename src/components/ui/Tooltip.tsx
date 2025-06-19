@@ -21,7 +21,7 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
                 {children}
                 <div
                     className={twMerge(
-                        'invisible absolute z-50 rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition-all group-hover:visible group-hover:opacity-100',
+                        'invisible absolute z-50 rounded bg-emerald-900 px-2 py-1 text-xs text-white opacity-0 transition-all group-hover:visible group-hover:opacity-100',
                         positions[position],
                         className
                     )}
@@ -29,7 +29,7 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
                     {content}
                     <div
                         className={twMerge(
-                            'absolute h-2 w-2 rotate-45 bg-gray-900',
+                            'absolute h-2 w-2 rotate-45 bg-emerald-900',
                             position === 'top' && 'bottom-[-4px] left-1/2 -translate-x-1/2',
                             position === 'right' && 'left-[-4px] top-1/2 -translate-y-1/2',
                             position === 'bottom' && 'top-[-4px] left-1/2 -translate-x-1/2',

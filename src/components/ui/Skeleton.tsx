@@ -10,7 +10,7 @@ interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
 
 const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
     ({ className, variant = 'text', width, height, ...props }, ref) => {
-        const baseStyles = 'animate-pulse bg-gray-200'
+        const baseStyles = 'animate-pulse bg-emerald-100'
 
         const variants = {
             text: 'rounded',

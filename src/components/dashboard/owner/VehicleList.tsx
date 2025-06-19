@@ -11,16 +11,18 @@ interface Vehicle {
     price_per_day: number
     status: string
     image_url: string
-    is_available: boolean
+    availability: boolean
 }
 
 interface VehicleListProps {
     vehicles: Vehicle[]
-    onAvailabilityRequest: (vehicleId: number) => void
+    onVehicleUpdate?: (vehicleId: number, updated: Partial<Vehicle>) => void
 }
 
-export default function VehicleList({ vehicles, onAvailabilityRequest }: VehicleListProps) {
+export default function VehicleList({ vehicles, onVehicleUpdate }: VehicleListProps) {
     const [expandedVehicle, setExpandedVehicle] = useState<number | null>(null)
+    const [loadingId, setLoadingId] = useState<number | null>(null)
+    const [localVehicles, setLocalVehicles] = useState<Vehicle[]>(vehicles)
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -43,14 +45,38 @@ export default function VehicleList({ vehicles, onAvailabilityRequest }: Vehicle
         ).join(' ')
     }
 
+    const handleToggleAvailability = async (vehicle: Vehicle) => {
+        setLoadingId(vehicle.id)
+        try {
+            const res = await fetch(`/api/owner/vehicles/${vehicle.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ availability: !vehicle.availability })
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setLocalVehicles(prev => prev.map(v =>
+                    v.id === vehicle.id ? { ...v, availability: !vehicle.availability } : v
+                ))
+                if (onVehicleUpdate) onVehicleUpdate(vehicle.id, { availability: !vehicle.availability })
+            } else {
+                alert('Failed to update availability')
+            }
+        } catch (e) {
+            alert('Error updating availability')
+        } finally {
+            setLoadingId(null)
+        }
+    }
+
     return (
         <div className="divide-y">
-            {vehicles.length === 0 ? (
+            {localVehicles.length === 0 ? (
                 <div className="p-6 text-center text-gray-500">
                     No vehicles listed yet. Add your first vehicle to get started!
                 </div>
             ) : (
-                vehicles.map((vehicle) => (
+                localVehicles.map((vehicle) => (
                     <div
                         key={vehicle.id}
                         className="p-6 hover:bg-gray-50 transition-colors"
@@ -71,6 +97,20 @@ export default function VehicleList({ vehicles, onAvailabilityRequest }: Vehicle
                                     <p className="text-primary font-semibold">
                                         ${vehicle.price_per_day}/day
                                     </p>
+                                    <div className="mt-2 flex items-center space-x-2">
+                                        <span className={vehicle.availability ? 'text-green-600' : 'text-red-600'}>
+                                            Available: {vehicle.availability ? 'Yes' : 'No'}
+                                        </span>
+                                        {vehicle.status === 'approved' && (
+                                            <button
+                                                className={`ml-2 px-3 py-1 rounded text-sm border ${vehicle.availability ? 'bg-green-100 border-green-400 text-green-800' : 'bg-red-100 border-red-400 text-red-800'} ${loadingId === vehicle.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                onClick={() => handleToggleAvailability(vehicle)}
+                                                disabled={loadingId === vehicle.id}
+                                            >
+                                                {vehicle.availability ? 'Mark Unavailable' : 'Mark Available'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center space-x-4">
@@ -99,14 +139,6 @@ export default function VehicleList({ vehicles, onAvailabilityRequest }: Vehicle
                         {expandedVehicle === vehicle.id && (
                             <div className="mt-4 pt-4 border-t">
                                 <div className="flex justify-end space-x-4">
-                                    {!vehicle.is_available && vehicle.status === 'approved' && (
-                                        <button
-                                            onClick={() => onAvailabilityRequest(vehicle.id)}
-                                            className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-dark"
-                                        >
-                                            Request Availability
-                                        </button>
-                                    )}
                                     <button
                                         onClick={() => window.location.href = `/dashboard/owner/vehicles/${vehicle.id}`}
                                         className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200"
