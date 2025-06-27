@@ -1,9 +1,12 @@
 import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import pool from '@/lib/db'
 import { verifyJWT } from '@/lib/auth'
 
-export async function POST(_: Request, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest) {
+    const url = request.nextUrl;
+    const id = url.pathname.split("/").reverse()[2]; // Extracts the [id] param
+
     try {
         const cookieStore = await cookies()
         const token = cookieStore.get('token')?.value
@@ -19,7 +22,7 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
 
         await pool.query(
             'UPDATE kyc SET status = $1 WHERE id = $2',
-            ['rejected', params.id]
+            ['rejected', id]
         )
 
         return NextResponse.json({ message: 'KYC rejected successfully' }, { status: 200 })
