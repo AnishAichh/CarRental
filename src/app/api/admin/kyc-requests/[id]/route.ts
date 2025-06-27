@@ -3,10 +3,9 @@ import { verifyJWT } from '@/lib/auth'
 import pool from '@/lib/db'
 import { JwtPayload } from 'jsonwebtoken'
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
+    const url = request.nextUrl;
+    const id = url.pathname.split("/").reverse()[1]; // Extracts the [id] param
     try {
         const token = request.cookies.get('token')?.value
         if (!token) {
@@ -36,7 +35,7 @@ export async function POST(
             )
         }
 
-        const requestId = parseInt(params.id)
+        const requestId = parseInt(id)
         if (isNaN(requestId)) {
             return NextResponse.json(
                 { error: 'Invalid request ID' },
