@@ -3,10 +3,9 @@ import pool from '@/lib/db'
 import { verifyJWT } from '@/lib/auth'
 import { JwtPayload } from 'jsonwebtoken'
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
+    const url = request.nextUrl;
+    const id = url.pathname.split("/").reverse()[1]; // Extracts the [id] param
     try {
         const token = request.cookies.get('token')?.value
         if (!token) {
@@ -36,7 +35,7 @@ export async function POST(
                 FROM bookings b
                 JOIN vehicles v ON b.vehicle_id = v.id
                 WHERE b.id = $1`,
-                [params.id]
+                [id]
             )
 
             if (bookingRows.length === 0) {
@@ -64,7 +63,7 @@ export async function POST(
             // Update booking status
             await client.query(
                 'UPDATE bookings SET status = $1 WHERE id = $2',
-                [action === 'confirm' ? 'confirmed' : 'rejected', params.id]
+                [action === 'confirm' ? 'confirmed' : 'rejected', id]
             )
 
             // If rejected, check if there are other pending bookings for the same dates

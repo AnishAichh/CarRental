@@ -3,19 +3,18 @@ import pool from '@/lib/db'
 import { verifyJWT } from '@/lib/auth'
 import { JwtPayload } from 'jsonwebtoken'
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
+    const url = request.nextUrl;
+    const id = url.pathname.split("/").reverse()[2]; // Extracts the [id] param
     try {
         const token = request.cookies.get('token')?.value
         if (!token) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const decoded = verifyJWT(token) as JwtPayload
-        if (!decoded || !decoded.id) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+        const decoded = await verifyJWT(token) as JwtPayload
+        if (!decoded || !decoded.id || !decoded.isAdmin) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
         // Verify if user is admin
@@ -28,15 +27,13 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const vehicleId = params.id
-
         // Update vehicle status to rejected
         const { rows } = await pool.query(
             `UPDATE vehicles 
        SET status = 'rejected', is_available = false
        WHERE id = $1
        RETURNING *`,
-            [vehicleId]
+            [id]
         )
 
         if (rows.length === 0) {
@@ -46,11 +43,11 @@ export async function POST(
             )
         }
 
-        return NextResponse.json({ message: 'Vehicle rejected successfully' })
+        return NextResponse.json({ message: `Received POST for vehicle reject id: ${id}` })
     } catch (error) {
-        console.error('Error rejecting vehicle:', error)
+        console.error('Error in vehicle reject endpoint:', error)
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: 'Failed to process request' },
             { status: 500 }
         )
     }
