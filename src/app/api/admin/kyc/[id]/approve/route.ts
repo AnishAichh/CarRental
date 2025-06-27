@@ -3,10 +3,9 @@ import pool from '@/lib/db'
 import { verifyJWT } from '@/lib/auth'
 import { JwtPayload } from 'jsonwebtoken'
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
+    const url = request.nextUrl;
+    const id = url.pathname.split("/").reverse()[2]; // Extracts the [id] param
     try {
         // Verify admin token
         const token = request.cookies.get('token')?.value
@@ -36,7 +35,7 @@ export async function POST(
             // Get KYC record
             const { rows: kycRows } = await client.query(
                 'SELECT user_id FROM kyc WHERE id = $1',
-                [params.id]
+                [id]
             )
 
             if (kycRows.length === 0) {
@@ -49,7 +48,7 @@ export async function POST(
             // Update KYC status
             await client.query(
                 'UPDATE kyc SET status = $1 WHERE id = $2',
-                ['approved', params.id]
+                ['approved', id]
             )
 
             // Update user's KYC verification status
