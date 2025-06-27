@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import nodemailer from 'nodemailer';
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest) {
+    const url = request.nextUrl;
+    const id = url.pathname.split("/").reverse()[1]; // Extracts the [id] param
     try {
-        const bookingId = params.id;
         const { location, time, notes } = await request.json();
 
         // Fetch booking, user, and vehicle info
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       JOIN users u ON u.id = b.user_id
       JOIN vehicles v ON v.id = b.vehicle_id
       WHERE b.id = $1
-    `, [bookingId]);
+    `, [id]);
 
         if (rows.length === 0) {
             return NextResponse.json({ error: 'Booking not found' }, { status: 404 });

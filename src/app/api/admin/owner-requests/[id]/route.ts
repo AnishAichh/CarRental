@@ -4,10 +4,9 @@ import { verifyJWT } from '@/lib/auth'
 import pool from '@/lib/db'
 import { JwtPayload } from 'jsonwebtoken'
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
+    const url = request.nextUrl;
+    const id = url.pathname.split("/").reverse()[2]; // Extracts the [id] param
     try {
         const token = request.cookies.get('token')?.value
         if (!token) {
@@ -29,7 +28,7 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const requestId = params.id
+        const requestId = id
         const body = await request.json()
         const { action, notes } = body
 
@@ -103,13 +102,14 @@ export async function POST(
             await client.query('COMMIT')
 
             return NextResponse.json({
-                message: `Owner request ${action === 'approve' ? 'approved' : 'rejected'} successfully`
+                message: `Owner request ${action}d successfully`,
+                request: ownerRequest
             })
         } catch (error) {
             await client.query('ROLLBACK')
-            console.error('Error in owner request approval:', error)
+            console.error('Error updating owner request:', error)
             return NextResponse.json(
-                { error: 'Failed to process owner request' },
+                { error: 'Failed to update owner request' },
                 { status: 500 }
             )
         } finally {
